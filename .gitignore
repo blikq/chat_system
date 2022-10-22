@@ -1,0 +1,6 @@
+.idea
+.git
+*__pycache__
+db.sqlite3
+chat_system/settings.py
+main/migrations
