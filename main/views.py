@@ -1,8 +1,8 @@
 
 from django.shortcuts import render
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseServerError, HttpResponseBadRequest
 import urllib3
-from .models import DumUser, FailedMsg
+from .models import DumUser, msg_db
 
 # Create your views here.
 
@@ -13,24 +13,34 @@ U-Edit existing data model
 D-Delete data from model
 """
 
-def send_msg(response, f_user:str, t_user:str, msg):
+def send_msg(response):
     #PUT URL DECODING HERE
+    #REMEMBER TO HANDLE THE ERRORS LATER
+    # try:
     try:
-        u1 = DumUser(name=f_user) # sender
-        u2 = DumUser(name=t_user) # receiver
-        u1.dummsg_set.create(msg=msg, sender = f_user,receiver=t_user, if_sender=True)
-        u1.save()
-        u2.dummsg_set.create(msg=msg, sender=f_user, receiver=t_user, if_rec=True)
-        u2.save()
+        f_user = response.headers["fuser"]
+        t_user = response.headers["tuser"]
+        msg = response.headers["msg"]
     except:
-        a = FailedMsg(msg=msg, sender=f_user, receiver=t_user)
-        a.save()
-        return JsonResponse({
-        "success": False
-        })
+        return HttpResponseBadRequest(JsonResponse({
+            "success": False,
+            "error": 422
+        }))
+    u1 = DumUser.objects.get(name=str(f_user)) # sender
+    u2 = DumUser.objects.get(name=str(t_user)) # receiver
+    u1.messages_sent += 1
+    u2.messages_received += 1
+    u1.save(); u2.save()
+    msg_db.insert_one({
+        "message": msg
+    })
+
+    # except:
+    #     return HttpResponseServerError(JsonResponse({
+    #         "success": False,
+    #         "error": 500
+    #     }))
     return JsonResponse({
         "success": True
     })
-    # pass
-
 
